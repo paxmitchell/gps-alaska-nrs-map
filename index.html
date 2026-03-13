@@ -242,7 +242,7 @@
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
   <script>
-    mapboxgl.accessToken = 'pk.eyJ1IjoicGF4bWl0Y2hlbGwiLCJhIjoiY21taTN5Y21mMTJzYzJxb2Z6YW9oZW0yMCJ9.SdMEae4Sxirm4QsWpCLKCw';
+    mapboxgl.accessToken = 'PASTE_YOUR_MAPBOX_TOKEN_HERE';
 
     const stations = [
       { id: 1,  name: 'NRS-01',  coordinates: [-151.864509, 59.770639] },
@@ -299,7 +299,7 @@
 
     const map = new mapboxgl.Map({
       container: 'map',
-      style: 'mapbox://styles/mapbox/dark-v11',
+      style: 'mapbox://styles/mapbox/streets-v12',
       center: [-149.4937, 64.2008],
       zoom: 3.2,
       pitch: 0,
@@ -334,10 +334,11 @@
       const width = window.innerWidth;
       const height = window.innerHeight;
       ctx.clearRect(0, 0, width, height);
+      ctx.globalCompositeOperation = 'source-over';
 
       stations.forEach(station => {
         const projected = map.project(station.coordinates);
-        if (projected.x < -200 || projected.x > width + 200 || projected.y < -200 || projected.y > height + 200) {
+        if (projected.x < -300 || projected.x > width + 300 || projected.y < -300 || projected.y > height + 300) {
           return;
         }
 
@@ -345,28 +346,65 @@
         const midRadius = kmToPixels(station.coordinates[1], map.getZoom(), 20);
         const innerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 10);
 
-        const gradient = ctx.createRadialGradient(
+        const blendGradient = ctx.createRadialGradient(
           projected.x,
           projected.y,
-          Math.max(0, innerRadius * 0.15),
+          0,
           projected.x,
           projected.y,
           outerRadius
         );
 
-        gradient.addColorStop(0.00, 'rgba(53, 184, 93, 0.42)');
-        gradient.addColorStop(Math.max(0.01, innerRadius / outerRadius), 'rgba(53, 184, 93, 0.38)');
-        gradient.addColorStop(Math.min(0.999, (innerRadius + (midRadius - innerRadius) * 0.45) / outerRadius), 'rgba(156, 197, 69, 0.34)');
-        gradient.addColorStop(Math.max(0.01, midRadius / outerRadius), 'rgba(255, 208, 74, 0.24)');
-        gradient.addColorStop(Math.min(0.999, (midRadius + (outerRadius - midRadius) * 0.45) / outerRadius), 'rgba(255, 145, 77, 0.18)');
-        gradient.addColorStop(0.93, 'rgba(227, 78, 61, 0.10)');
-        gradient.addColorStop(1.00, 'rgba(227, 78, 61, 0.00)');
+        blendGradient.addColorStop(0.00, 'rgba(56, 168, 84, 0.22)');
+        blendGradient.addColorStop(Math.max(0.01, innerRadius / outerRadius * 0.72), 'rgba(56, 168, 84, 0.22)');
+        blendGradient.addColorStop(Math.max(0.01, innerRadius / outerRadius), 'rgba(94, 176, 74, 0.20)');
+        blendGradient.addColorStop(Math.max(0.01, midRadius / outerRadius * 0.88), 'rgba(205, 184, 62, 0.17)');
+        blendGradient.addColorStop(Math.max(0.01, midRadius / outerRadius), 'rgba(232, 166, 66, 0.15)');
+        blendGradient.addColorStop(0.88, 'rgba(210, 107, 52, 0.10)');
+        blendGradient.addColorStop(1.00, 'rgba(194, 74, 48, 0.00)');
 
         ctx.beginPath();
         ctx.arc(projected.x, projected.y, outerRadius, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
+        ctx.fillStyle = blendGradient;
         ctx.fill();
       });
+
+      ctx.globalCompositeOperation = 'screen';
+
+      stations.forEach(station => {
+        const projected = map.project(station.coordinates);
+        if (projected.x < -300 || projected.x > width + 300 || projected.y < -300 || projected.y > height + 300) {
+          return;
+        }
+
+        const outerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 30);
+        const midRadius = kmToPixels(station.coordinates[1], map.getZoom(), 20);
+        const innerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 10);
+
+        const softCore = ctx.createRadialGradient(
+          projected.x,
+          projected.y,
+          0,
+          projected.x,
+          projected.y,
+          outerRadius
+        );
+
+        softCore.addColorStop(0.00, 'rgba(43, 156, 76, 0.24)');
+        softCore.addColorStop(Math.max(0.01, innerRadius / outerRadius * 0.70), 'rgba(43, 156, 76, 0.23)');
+        softCore.addColorStop(Math.max(0.01, innerRadius / outerRadius), 'rgba(96, 176, 71, 0.18)');
+        softCore.addColorStop(Math.max(0.01, (innerRadius + (midRadius - innerRadius) * 0.60) / outerRadius), 'rgba(214, 190, 71, 0.13)');
+        softCore.addColorStop(Math.max(0.01, midRadius / outerRadius), 'rgba(234, 165, 74, 0.10)');
+        softCore.addColorStop(0.90, 'rgba(207, 100, 55, 0.07)');
+        softCore.addColorStop(1.00, 'rgba(180, 64, 43, 0.00)');
+
+        ctx.beginPath();
+        ctx.arc(projected.x, projected.y, outerRadius, 0, Math.PI * 2);
+        ctx.fillStyle = softCore;
+        ctx.fill();
+      });
+
+      ctx.globalCompositeOperation = 'source-over';
     }
 
     function makeTowerIcon() {
@@ -382,12 +420,12 @@
             </filter>
           </defs>
           <g filter="url(#glow)">
-            <path d="M48 10c2.2 0 4 1.8 4 4v5.4c10.2 1.7 18.3 9.8 20 20H66c-1.5-7-7-12.5-14-14v-6.4c0-2.2-1.8-4-4-4s-4 1.8-4 4v6.4c-7 1.5-12.5 7-14 14h-6c1.7-10.2 9.8-18.3 20-20V14c0-2.2 1.8-4 4-4Z" fill="#70AFFF" opacity="0.95"/>
-            <path d="M34 84h28l-9-22h8L50.8 36h6.2l-9-18-9 18H45L35 62h8l-9 22Zm11.2-8 2.8-7h0l2.8 7h-5.6Z" fill="#F5FAFF"/>
-            <path d="M16 46c0-15.2 7.8-26.5 18-31.7" stroke="#70AFFF" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
-            <path d="M80 46c0-15.2-7.8-26.5-18-31.7" stroke="#70AFFF" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
-            <path d="M24 50c0-10.4 5.4-18.4 12.6-22.5" stroke="#9EC5FF" stroke-width="3.5" stroke-linecap="round" opacity="0.62"/>
-            <path d="M72 50c0-10.4-5.4-18.4-12.6-22.5" stroke="#9EC5FF" stroke-width="3.5" stroke-linecap="round" opacity="0.62"/>
+            <path d="M48 10c2.2 0 4 1.8 4 4v5.4c10.2 1.7 18.3 9.8 20 20H66c-1.5-7-7-12.5-14-14v-6.4c0-2.2-1.8-4-4-4s-4 1.8-4 4v6.4c-7 1.5-12.5 7-14 14h-6c1.7-10.2 9.8-18.3 20-20V14c0-2.2 1.8-4 4-4Z" fill="#111111" opacity="0.95"/>
+            <path d="M34 84h28l-9-22h8L50.8 36h6.2l-9-18-9 18H45L35 62h8l-9 22Zm11.2-8 2.8-7h0l2.8 7h-5.6Z" fill="#111111"/>
+            <path d="M16 46c0-15.2 7.8-26.5 18-31.7" stroke="#111111" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+            <path d="M80 46c0-15.2-7.8-26.5-18-31.7" stroke="#111111" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+            <path d="M24 50c0-10.4 5.4-18.4 12.6-22.5" stroke="#111111" stroke-width="3.5" stroke-linecap="round" opacity="0.45"/>
+            <path d="M72 50c0-10.4-5.4-18.4-12.6-22.5" stroke="#111111" stroke-width="3.5" stroke-linecap="round" opacity="0.45"/>
           </g>
         </svg>
       `);
