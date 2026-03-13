@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPS Alaska | NRS Coverage Map</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #091423;
+      --panel: rgba(8, 20, 35, 0.72);
+      --panel-border: rgba(255, 255, 255, 0.12);
+      --text: #eef4ff;
+      --muted: rgba(238, 244, 255, 0.72);
+      --brand: #2d7ddf;
+      --brand-soft: rgba(45, 125, 223, 0.22);
+      --green: rgba(53, 184, 93, 0.42);
+      --yellow: rgba(255, 208, 74, 0.26);
+      --orange: rgba(255, 145, 77, 0.22);
+      --red: rgba(227, 78, 61, 0.16);
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+    }
+
+    #coverage-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .panel {
+      position: absolute;
+      z-index: 3;
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .title-card {
+      top: 18px;
+      left: 18px;
+      width: min(420px, calc(100vw - 36px));
+      padding: 18px 18px 16px;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, rgba(45,125,223,0.3), rgba(45,125,223,0.12));
+      border: 1px solid rgba(255,255,255,0.1);
+      flex: 0 0 auto;
+    }
+
+    .brand-mark svg {
+      width: 24px;
+      height: 24px;
+      fill: var(--brand);
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 32px);
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .legend {
+      top: 18px;
+      right: 18px;
+      width: min(280px, calc(100vw - 36px));
+      padding: 16px;
+    }
+
+    .legend h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .swatch.green { background: rgba(53, 184, 93, 0.75); }
+    .swatch.yellow { background: rgba(255, 208, 74, 0.72); }
+    .swatch.orange { background: linear-gradient(135deg, rgba(255,145,77,0.8), rgba(227,78,61,0.8)); }
+    .swatch.pin { background: rgba(45,125,223,0.82); }
+
+    .footer-chip {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      z-index: 3;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(8, 20, 35, 0.68);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      font-size: 12px;
+      color: var(--muted);
+      box-shadow: var(--shadow);
+    }
+
+    .mapboxgl-popup-content {
+      background: rgba(10, 24, 40, 0.86);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 18px;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      padding: 12px 14px;
+    }
+
+    .mapboxgl-popup-close-button {
+      color: rgba(255,255,255,0.72);
+      font-size: 18px;
+      padding-right: 6px;
+    }
+
+    .popup-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .popup-copy {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    @media (max-width: 760px) {
+      .title-card {
+        width: calc(100vw - 24px);
+        top: 12px;
+        left: 12px;
+      }
+
+      .legend {
+        top: auto;
+        right: 12px;
+        left: 12px;
+        bottom: 58px;
+        width: auto;
+      }
+
+      .footer-chip {
+        left: 12px;
+        bottom: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <canvas id="coverage-canvas"></canvas>
+
+  <div class="panel title-card">
+    <div class="brand-row">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2a1 1 0 0 1 1 1v1.06a8.002 8.002 0 0 1 6.94 6.94H21a1 1 0 1 1 0 2h-1.06a8.002 8.002 0 0 1-6.94 6.94V21a1 1 0 1 1-2 0v-1.06a8.002 8.002 0 0 1-6.94-6.94H3a1 1 0 1 1 0-2h1.06A8.002 8.002 0 0 1 11 4.06V3a1 1 0 0 1 1-1Zm0 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm0 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="eyebrow">GPS Alaska</div>
+        <h1>NRS Coverage Map</h1>
+      </div>
+    </div>
+    <div class="subtitle">
+      Network reference station coverage across Alaska with smooth 10 km, 20 km, and 30 km distance shading.
+    </div>
+  </div>
+
+  <div class="panel legend">
+    <h2>Coverage Bands</h2>
+    <div class="legend-item"><span class="swatch pin"></span><span>Network reference station pin</span></div>
+    <div class="legend-item"><span class="swatch green"></span><span>0–10 km core coverage</span></div>
+    <div class="legend-item"><span class="swatch yellow"></span><span>10–20 km transitional coverage</span></div>
+    <div class="legend-item"><span class="swatch orange"></span><span>20–30 km outer coverage fade</span></div>
+  </div>
+
+  <div class="footer-chip">Static Mapbox + canvas overlay • optimized for GitHub + Netlify</div>
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoicGF4bWl0Y2hlbGwiLCJhIjoiY21taTN5Y21mMTJzYzJxb2Z6YW9oZW0yMCJ9.SdMEae4Sxirm4QsWpCLKCw';
+
+    const stations = [
+      { id: 1,  name: 'NRS-01',  coordinates: [-151.864509, 59.770639] },
+      { id: 2,  name: 'NRS-02',  coordinates: [-148.331723, 61.80708] },
+      { id: 3,  name: 'NRS-03',  coordinates: [-149.352479, 60.929208] },
+      { id: 4,  name: 'NRS-04',  coordinates: [-150.068927, 61.768974] },
+      { id: 5,  name: 'NRS-05',  coordinates: [-149.874824, 61.173246] },
+      { id: 6,  name: 'NRS-06',  coordinates: [-149.826971, 61.103028] },
+      { id: 7,  name: 'NRS-07',  coordinates: [-149.784697, 61.565751] },
+      { id: 8,  name: 'NRS-08',  coordinates: [-156.764402, 71.301283] },
+      { id: 9,  name: 'NRS-09',  coordinates: [-145.755381, 60.557551] },
+      { id: 10, name: 'NRS-10', coordinates: [-145.71551, 63.97385] },
+      { id: 11, name: 'NRS-11', coordinates: [-148.005019, 64.845017] },
+      { id: 12, name: 'NRS-12', coordinates: [-149.566302, 61.328618] },
+      { id: 13, name: 'NRS-13', coordinates: [-147.69252, 64.848852] },
+      { id: 14, name: 'NRS-14', coordinates: [-147.616731, 64.960351] },
+      { id: 15, name: 'NRS-15', coordinates: [-151.518004, 59.651336] },
+      { id: 16, name: 'NRS-16', coordinates: [-149.756247, 61.262426] },
+      { id: 17, name: 'NRS-17', coordinates: [-152.364538, 57.810533] },
+      { id: 18, name: 'NRS-18', coordinates: [-162.60521, 66.893464] },
+      { id: 19, name: 'NRS-19', coordinates: [-147.394019, 64.756959] },
+      { id: 20, name: 'NRS-20', coordinates: [-149.110521, 61.59797] },
+      { id: 21, name: 'NRS-21', coordinates: [-149.88576, 61.217164] },
+      { id: 22, name: 'NRS-22', coordinates: [-151.072077, 60.502525] },
+      { id: 23, name: 'NRS-23', coordinates: [-150.077214, 62.297944] },
+      { id: 24, name: 'NRS-24', coordinates: [-148.681525, 60.776993] },
+      { id: 25, name: 'NRS-25', coordinates: [-148.916989, 63.730808] },
+      { id: 26, name: 'NRS-26', coordinates: [-135.888484, 58.455147] },
+      { id: 27, name: 'NRS-27', coordinates: [-149.439676, 60.116227] },
+      { id: 28, name: 'NRS-28', coordinates: [-151.073069, 60.464726] },
+      { id: 29, name: 'NRS-29', coordinates: [-149.104442, 60.971207] },
+      { id: 30, name: 'NRS-30', coordinates: [-151.244673, 60.334205] }
+    ];
+
+    const stationGeoJSON = {
+      type: 'FeatureCollection',
+      features: stations.map(station => ({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: station.coordinates
+        },
+        properties: {
+          id: station.id,
+          name: station.name,
+          latitude: station.coordinates[1].toFixed(6),
+          longitude: station.coordinates[0].toFixed(6)
+        }
+      }))
+    };
+
+    const bounds = new mapboxgl.LngLatBounds();
+    stations.forEach(station => bounds.extend(station.coordinates));
+
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-149.4937, 64.2008],
+      zoom: 3.2,
+      pitch: 0,
+      attributionControl: false
+    });
+
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+    const canvas = document.getElementById('coverage-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const ratio = window.devicePixelRatio || 1;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      canvas.width = width * ratio;
+      canvas.height = height * ratio;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      drawCoverage();
+    }
+
+    function kmToPixels(lat, zoom, km) {
+      const metersPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
+      return (km * 1000) / metersPerPixel;
+    }
+
+    function drawCoverage() {
+      if (!map.isStyleLoaded()) return;
+
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      ctx.clearRect(0, 0, width, height);
+
+      stations.forEach(station => {
+        const projected = map.project(station.coordinates);
+        if (projected.x < -200 || projected.x > width + 200 || projected.y < -200 || projected.y > height + 200) {
+          return;
+        }
+
+        const outerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 30);
+        const midRadius = kmToPixels(station.coordinates[1], map.getZoom(), 20);
+        const innerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 10);
+
+        const gradient = ctx.createRadialGradient(
+          projected.x,
+          projected.y,
+          Math.max(0, innerRadius * 0.15),
+          projected.x,
+          projected.y,
+          outerRadius
+        );
+
+        gradient.addColorStop(0.00, 'rgba(53, 184, 93, 0.42)');
+        gradient.addColorStop(Math.max(0.01, innerRadius / outerRadius), 'rgba(53, 184, 93, 0.38)');
+        gradient.addColorStop(Math.min(0.999, (innerRadius + (midRadius - innerRadius) * 0.45) / outerRadius), 'rgba(156, 197, 69, 0.34)');
+        gradient.addColorStop(Math.max(0.01, midRadius / outerRadius), 'rgba(255, 208, 74, 0.24)');
+        gradient.addColorStop(Math.min(0.999, (midRadius + (outerRadius - midRadius) * 0.45) / outerRadius), 'rgba(255, 145, 77, 0.18)');
+        gradient.addColorStop(0.93, 'rgba(227, 78, 61, 0.10)');
+        gradient.addColorStop(1.00, 'rgba(227, 78, 61, 0.00)');
+
+        ctx.beginPath();
+        ctx.arc(projected.x, projected.y, outerRadius, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+      });
+    }
+
+    function makeTowerIcon() {
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none">
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3.2" result="blur"/>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+          <g filter="url(#glow)">
+            <path d="M48 10c2.2 0 4 1.8 4 4v5.4c10.2 1.7 18.3 9.8 20 20H66c-1.5-7-7-12.5-14-14v-6.4c0-2.2-1.8-4-4-4s-4 1.8-4 4v6.4c-7 1.5-12.5 7-14 14h-6c1.7-10.2 9.8-18.3 20-20V14c0-2.2 1.8-4 4-4Z" fill="#70AFFF" opacity="0.95"/>
+            <path d="M34 84h28l-9-22h8L50.8 36h6.2l-9-18-9 18H45L35 62h8l-9 22Zm11.2-8 2.8-7h0l2.8 7h-5.6Z" fill="#F5FAFF"/>
+            <path d="M16 46c0-15.2 7.8-26.5 18-31.7" stroke="#70AFFF" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+            <path d="M80 46c0-15.2-7.8-26.5-18-31.7" stroke="#70AFFF" stroke-width="4" stroke-linecap="round" opacity="0.7"/>
+            <path d="M24 50c0-10.4 5.4-18.4 12.6-22.5" stroke="#9EC5FF" stroke-width="3.5" stroke-linecap="round" opacity="0.62"/>
+            <path d="M72 50c0-10.4-5.4-18.4-12.6-22.5" stroke="#9EC5FF" stroke-width="3.5" stroke-linecap="round" opacity="0.62"/>
+          </g>
+        </svg>`;
+
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    map.on('load', () => {
+      map.fitBounds(bounds, { padding: 70, duration: 0, maxZoom: 5.2 });
+
+      map.loadImage(makeTowerIcon(), (error, image) => {
+        if (error) throw error;
+        if (!map.hasImage('tower-icon')) map.addImage('tower-icon', image, { pixelRatio: 2 });
+
+        map.addSource('stations', {
+          type: 'geojson',
+          data: stationGeoJSON
+        });
+
+        map.addLayer({
+          id: 'station-pins',
+          type: 'symbol',
+          source: 'stations',
+          layout: {
+            'icon-image': 'tower-icon',
+            'icon-size': [
+              'interpolate', ['linear'], ['zoom'],
+              3, 0.30,
+              5, 0.42,
+              7, 0.58
+            ],
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true
+          }
+        });
+
+        map.addLayer({
+          id: 'station-labels',
+          type: 'symbol',
+          source: 'stations',
+          layout: {
+            'text-field': ['get', 'name'],
+            'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
+            'text-size': [
+              'interpolate', ['linear'], ['zoom'],
+              4, 10,
+              7, 12
+            ],
+            'text-offset': [0, 1.55],
+            'text-anchor': 'top',
+            'text-allow-overlap': true
+          },
+          paint: {
+            'text-color': '#eef4ff',
+            'text-halo-color': 'rgba(9,20,35,0.95)',
+            'text-halo-width': 1.2
+          }
+        });
+
+        const popup = new mapboxgl.Popup({ closeButton: true, closeOnClick: true, offset: 18 });
+
+        map.on('click', 'station-pins', (e) => {
+          const feature = e.features?.[0];
+          if (!feature) return;
+          const { name, latitude, longitude } = feature.properties;
+          popup
+            .setLngLat(feature.geometry.coordinates)
+            .setHTML(`
+              <div class="popup-title">${name}</div>
+              <div class="popup-copy">
+                Network reference station<br>
+                Lat: ${latitude}<br>
+                Lng: ${longitude}
+              </div>
+            `)
+            .addTo(map);
+        });
+
+        map.on('mouseenter', 'station-pins', () => {
+          map.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.on('mouseleave', 'station-pins', () => {
+          map.getCanvas().style.cursor = '';
+        });
+
+        resizeCanvas();
+        drawCoverage();
+      });
+    });
+
+    map.on('move', drawCoverage);
+    map.on('zoom', drawCoverage);
+    map.on('resize', resizeCanvas);
+    window.addEventListener('resize', resizeCanvas);
+  </script>
+</body>
+</html>
