@@ -33,15 +33,6 @@
       inset: 0;
     }
 
-    #coverage-canvas {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 2;
-    }
-
     .panel {
       position: absolute;
       z-index: 3;
@@ -109,7 +100,7 @@
     .legend {
       top: 18px;
       right: 18px;
-      width: min(280px, calc(100vw - 36px));
+      width: min(285px, calc(100vw - 36px));
       padding: 16px;
     }
 
@@ -137,10 +128,10 @@
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
     }
 
-    .swatch.green { background: rgba(53, 184, 93, 0.75); }
-    .swatch.yellow { background: rgba(255, 208, 74, 0.72); }
-    .swatch.orange { background: linear-gradient(135deg, rgba(255,145,77,0.8), rgba(227,78,61,0.8)); }
-    .swatch.pin { background: rgba(20,20,20,0.88); }
+    .swatch.green { background: rgba(48, 165, 78, 0.88); }
+    .swatch.yellow { background: rgba(220, 192, 73, 0.84); }
+    .swatch.orange { background: linear-gradient(135deg, rgba(231,152,73,0.88), rgba(198,82,48,0.88)); }
+    .swatch.pin { background: rgba(18,18,18,0.92); }
 
     .footer-chip {
       position: absolute;
@@ -211,7 +202,6 @@
 </head>
 <body>
   <div id="map"></div>
-  <canvas id="coverage-canvas"></canvas>
 
   <div class="panel title-card">
     <div class="brand-row">
@@ -226,7 +216,7 @@
       </div>
     </div>
     <div class="subtitle">
-      Network reference station coverage across Alaska with smooth 10 km, 20 km, and 30 km distance shading.
+      True merged Turf.js coverage polygons with 10 km, 20 km, and 30 km distance bands.
     </div>
   </div>
 
@@ -238,9 +228,10 @@
     <div class="legend-item"><span class="swatch orange"></span><span>20–30 km outer coverage fade</span></div>
   </div>
 
-  <div class="footer-chip">Static Mapbox + canvas overlay • optimized for GitHub + Netlify</div>
+  <div class="footer-chip">Mapbox + Turf.js merged polygons • optimized for GitHub + Netlify</div>
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
   <script>
     mapboxgl.accessToken = 'pk.eyJ1IjoicGF4bWl0Y2hlbGwiLCJhIjoiY21taTN5Y21mMTJzYzJxb2Z6YW9oZW0yMCJ9.SdMEae4Sxirm4QsWpCLKCw';
 
@@ -294,163 +285,88 @@
       }))
     };
 
+    function featureCollectionFromDistance(distanceKm) {
+      return turf.featureCollection(
+        stations.map(station => turf.buffer(turf.point(station.coordinates), distanceKm, { units: 'kilometers', steps: 64 }))
+      );
+    }
+
+    function dissolveCollection(collection) {
+      const features = collection.features.filter(Boolean);
+      if (!features.length) return turf.featureCollection([]);
+
+      let merged = features[0];
+      for (let i = 1; i < features.length; i += 1) {
+        try {
+          merged = turf.union(merged, features[i]) || merged;
+        } catch (error) {
+          console.warn('Union fallback on feature', i, error);
+        }
+      }
+
+      if (!merged) return turf.featureCollection([]);
+      return turf.featureCollection([merged]);
+    }
+
+    function polygonize(feature) {
+      if (!feature) return turf.featureCollection([]);
+      if (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon') {
+        return turf.featureCollection([feature]);
+      }
+      return turf.featureCollection([]);
+    }
+
+    function cleanDifference(outerFC, innerFC) {
+      const outerFeature = outerFC.features[0];
+      const innerFeature = innerFC.features[0];
+      if (!outerFeature) return turf.featureCollection([]);
+      if (!innerFeature) return turf.featureCollection([outerFeature]);
+      try {
+        const diff = turf.difference(outerFeature, innerFeature);
+        return polygonize(diff);
+      } catch (error) {
+        console.warn('Difference failed', error);
+        return turf.featureCollection([outerFeature]);
+      }
+    }
+
+    const merged10 = dissolveCollection(featureCollectionFromDistance(10));
+    const merged20 = dissolveCollection(featureCollectionFromDistance(20));
+    const merged30 = dissolveCollection(featureCollectionFromDistance(30));
+
+    const band0to10 = merged10;
+    const band10to20 = cleanDifference(merged20, merged10);
+    const band20to30 = cleanDifference(merged30, merged20);
+
     const bounds = new mapboxgl.LngLatBounds();
     stations.forEach(station => bounds.extend(station.coordinates));
+    if (merged30.features[0]) {
+      const [minX, minY, maxX, maxY] = turf.bbox(merged30.features[0]);
+      bounds.extend([minX, minY]);
+      bounds.extend([maxX, maxY]);
+    }
 
     const map = new mapboxgl.Map({
       container: 'map',
-      style: 'mapbox://styles/mapbox/navigation-night-v1',
+      style: 'mapbox://styles/mapbox/standard',
       center: [-149.4937, 64.2008],
       zoom: 3.2,
       pitch: 0,
       attributionControl: false
     });
 
+map.on('style.load', () => {
+  map.setConfigProperty('basemap', 'lightPreset', 'dusk');
+});
+
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-
-    const canvas = document.getElementById('coverage-canvas');
-    const ctx = canvas.getContext('2d');
-
-    function resizeCanvas() {
-      const ratio = window.devicePixelRatio || 1;
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      canvas.width = width * ratio;
-      canvas.height = height * ratio;
-      canvas.style.width = width + 'px';
-      canvas.style.height = height + 'px';
-      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      drawCoverage();
-    }
-
-    function kmToPixels(lat, zoom, km) {
-      const metersPerPixel = 156543.03392 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom);
-      return (km * 1000) / metersPerPixel;
-    }
-
-   function drawCoverage() {
-  if (!map.isStyleLoaded()) return;
-
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  ctx.clearRect(0, 0, width, height);
-
-  // Pass 1: stronger base layer
-  ctx.globalCompositeOperation = 'source-over';
-
-  stations.forEach(station => {
-    const projected = map.project(station.coordinates);
-    if (projected.x < -340 || projected.x > width + 340 || projected.y < -340 || projected.y > height + 340) {
-      return;
-    }
-
-    const outerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 30);
-    const midRadius = kmToPixels(station.coordinates[1], map.getZoom(), 20);
-    const innerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 10);
-
-    const baseGradient = ctx.createRadialGradient(
-      projected.x,
-      projected.y,
-      0,
-      projected.x,
-      projected.y,
-      outerRadius
-    );
-
-    baseGradient.addColorStop(0.00, 'rgba(38, 155, 72, 0.28)');
-    baseGradient.addColorStop(innerRadius / outerRadius * 0.78, 'rgba(38, 155, 72, 0.28)');
-    baseGradient.addColorStop(innerRadius / outerRadius, 'rgba(88, 178, 70, 0.20)');
-    baseGradient.addColorStop((innerRadius + (midRadius - innerRadius) * 0.58) / outerRadius, 'rgba(212, 194, 68, 0.17)');
-    baseGradient.addColorStop(midRadius / outerRadius, 'rgba(236, 166, 70, 0.15)');
-    baseGradient.addColorStop(0.84, 'rgba(214, 103, 56, 0.11)');
-    baseGradient.addColorStop(1.00, 'rgba(180, 64, 43, 0.00)');
-
-    ctx.beginPath();
-    ctx.arc(projected.x, projected.y, outerRadius, 0, Math.PI * 2);
-    ctx.fillStyle = baseGradient;
-    ctx.fill();
-  });
-
-  // Pass 2: heavier additive blend so nearby stations merge
-  ctx.globalCompositeOperation = 'lighter';
-
-  stations.forEach(station => {
-    const projected = map.project(station.coordinates);
-    if (projected.x < -340 || projected.x > width + 340 || projected.y < -340 || projected.y > height + 340) {
-      return;
-    }
-
-    const outerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 30);
-    const midRadius = kmToPixels(station.coordinates[1], map.getZoom(), 20);
-    const innerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 10);
-
-    const blendGradient = ctx.createRadialGradient(
-      projected.x,
-      projected.y,
-      0,
-      projected.x,
-      projected.y,
-      outerRadius
-    );
-
-    blendGradient.addColorStop(0.00, 'rgba(38, 155, 72, 0.24)');
-    blendGradient.addColorStop(innerRadius / outerRadius * 0.82, 'rgba(38, 155, 72, 0.24)');
-    blendGradient.addColorStop(innerRadius / outerRadius, 'rgba(88, 178, 70, 0.15)');
-    blendGradient.addColorStop((innerRadius + (midRadius - innerRadius) * 0.62) / outerRadius, 'rgba(212, 194, 68, 0.11)');
-    blendGradient.addColorStop(midRadius / outerRadius, 'rgba(236, 166, 70, 0.09)');
-    blendGradient.addColorStop(0.84, 'rgba(214, 103, 56, 0.06)');
-    blendGradient.addColorStop(1.00, 'rgba(180, 64, 43, 0.00)');
-
-    ctx.beginPath();
-    ctx.arc(projected.x, projected.y, outerRadius, 0, Math.PI * 2);
-    ctx.fillStyle = blendGradient;
-    ctx.fill();
-  });
-
-  // Pass 3: blur the field slightly so clusters read as one mass
-  ctx.globalCompositeOperation = 'screen';
-  ctx.filter = 'blur(20px)';
-
-  stations.forEach(station => {
-    const projected = map.project(station.coordinates);
-    if (projected.x < -340 || projected.x > width + 340 || projected.y < -340 || projected.y > height + 340) {
-      return;
-    }
-
-    const outerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 30);
-    const softRadius = outerRadius * 0.94;
-
-    const softGradient = ctx.createRadialGradient(
-      projected.x,
-      projected.y,
-      0,
-      projected.x,
-      projected.y,
-      softRadius
-    );
-
-    softGradient.addColorStop(0.00, 'rgba(56, 170, 86, 0.10)');
-    softGradient.addColorStop(0.45, 'rgba(120, 186, 78, 0.08)');
-    softGradient.addColorStop(0.72, 'rgba(220, 184, 78, 0.06)');
-    softGradient.addColorStop(0.90, 'rgba(220, 120, 62, 0.03)');
-    softGradient.addColorStop(1.00, 'rgba(180, 64, 43, 0.00)');
-
-    ctx.beginPath();
-    ctx.arc(projected.x, projected.y, softRadius, 0, Math.PI * 2);
-    ctx.fillStyle = softGradient;
-    ctx.fill();
-  });
-
-  ctx.filter = 'none';
-  ctx.globalCompositeOperation = 'source-over';
-}
 
     function makeTowerIcon() {
       return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
         <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none">
           <defs>
             <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="2.2" result="blur"/>
+              <feGaussianBlur stdDeviation="1.6" result="blur"/>
               <feMerge>
                 <feMergeNode in="blur"/>
                 <feMergeNode in="SourceGraphic"/>
@@ -460,21 +376,87 @@
           <g filter="url(#glow)">
             <path d="M48 10c2.2 0 4 1.8 4 4v5.4c10.2 1.7 18.3 9.8 20 20H66c-1.5-7-7-12.5-14-14v-6.4c0-2.2-1.8-4-4-4s-4 1.8-4 4v6.4c-7 1.5-12.5 7-14 14h-6c1.7-10.2 9.8-18.3 20-20V14c0-2.2 1.8-4 4-4Z" fill="#111111" opacity="0.96"/>
             <path d="M34 84h28l-9-22h8L50.8 36h6.2l-9-18-9 18H45L35 62h8l-9 22Zm11.2-8 2.8-7h0l2.8 7h-5.6Z" fill="#111111"/>
-            <path d="M16 46c0-15.2 7.8-26.5 18-31.7" stroke="#111111" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
-            <path d="M80 46c0-15.2-7.8-26.5-18-31.7" stroke="#111111" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
-            <path d="M24 50c0-10.4 5.4-18.4 12.6-22.5" stroke="#111111" stroke-width="3.5" stroke-linecap="round" opacity="0.45"/>
-            <path d="M72 50c0-10.4-5.4-18.4-12.6-22.5" stroke="#111111" stroke-width="3.5" stroke-linecap="round" opacity="0.45"/>
+            <path d="M16 46c0-15.2 7.8-26.5 18-31.7" stroke="#111111" stroke-width="4" stroke-linecap="round" opacity="0.74"/>
+            <path d="M80 46c0-15.2-7.8-26.5-18-31.7" stroke="#111111" stroke-width="4" stroke-linecap="round" opacity="0.74"/>
+            <path d="M24 50c0-10.4 5.4-18.4 12.6-22.5" stroke="#111111" stroke-width="3.5" stroke-linecap="round" opacity="0.48"/>
+            <path d="M72 50c0-10.4-5.4-18.4-12.6-22.5" stroke="#111111" stroke-width="3.5" stroke-linecap="round" opacity="0.48"/>
           </g>
         </svg>
       `);
     }
 
     map.on('load', () => {
-      map.fitBounds(bounds, { padding: 70, duration: 0, maxZoom: 5.2 });
+      map.fitBounds(bounds, { padding: 70, duration: 0, maxZoom: 5.4 });
 
-      map.addSource('stations', {
-        type: 'geojson',
-        data: stationGeoJSON
+      map.addSource('coverage-0-10', { type: 'geojson', data: band0to10 });
+      map.addSource('coverage-10-20', { type: 'geojson', data: band10to20 });
+      map.addSource('coverage-20-30', { type: 'geojson', data: band20to30 });
+      map.addSource('stations', { type: 'geojson', data: stationGeoJSON });
+
+      map.addLayer({
+        id: 'coverage-20-30-fill',
+        type: 'fill',
+        source: 'coverage-20-30',
+        paint: {
+          'fill-color': '#cf6d45',
+          'fill-opacity': 0.30
+        }
+      });
+
+      map.addLayer({
+        id: 'coverage-20-30-glow',
+        type: 'line',
+        source: 'coverage-20-30',
+        paint: {
+          'line-color': '#d67449',
+          'line-width': 18,
+          'line-opacity': 0.14,
+          'line-blur': 8
+        }
+      });
+
+      map.addLayer({
+        id: 'coverage-10-20-fill',
+        type: 'fill',
+        source: 'coverage-10-20',
+        paint: {
+          'fill-color': '#d8bf55',
+          'fill-opacity': 0.34
+        }
+      });
+
+      map.addLayer({
+        id: 'coverage-10-20-glow',
+        type: 'line',
+        source: 'coverage-10-20',
+        paint: {
+          'line-color': '#d8bf55',
+          'line-width': 16,
+          'line-opacity': 0.12,
+          'line-blur': 7
+        }
+      });
+
+      map.addLayer({
+        id: 'coverage-0-10-fill',
+        type: 'fill',
+        source: 'coverage-0-10',
+        paint: {
+          'fill-color': '#319a52',
+          'fill-opacity': 0.40
+        }
+      });
+
+      map.addLayer({
+        id: 'coverage-0-10-glow',
+        type: 'line',
+        source: 'coverage-0-10',
+        paint: {
+          'line-color': '#35a55a',
+          'line-width': 14,
+          'line-opacity': 0.14,
+          'line-blur': 6
+        }
       });
 
       const towerImage = new Image(96, 96);
@@ -548,9 +530,6 @@
         map.on('mouseleave', 'station-pins', () => {
           map.getCanvas().style.cursor = '';
         });
-
-        resizeCanvas();
-        drawCoverage();
       };
 
       towerImage.onerror = () => {
@@ -559,11 +538,6 @@
 
       towerImage.src = makeTowerIcon();
     });
-
-    map.on('move', drawCoverage);
-    map.on('zoom', drawCoverage);
-    map.on('resize', resizeCanvas);
-    window.addEventListener('resize', resizeCanvas);
   </script>
 </body>
 </html>
