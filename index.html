@@ -247,7 +247,7 @@
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
   <script>
-    mapboxgl.accessToken = 'pk.eyJ1IjoicGF4bWl0Y2hlbGwiLCJhIjoiY21taTN5Y21mMTJzYzJxb2Z6YW9oZW0yMCJ9.SdMEae4Sxirm4QsWpCLKCw';
+    mapboxgl.accessToken = 'PASTE_YOUR_MAPBOX_TOKEN_HERE';
 
     const stations = [
       { id: 1,  name: 'NRS-01',  coordinates: [-151.864509, 59.770639] },
@@ -402,9 +402,11 @@
     map.on('load', () => {
       map.fitBounds(bounds, { padding: 70, duration: 0, maxZoom: 5.2 });
 
-      map.loadImage(makeTowerIcon(), (error, image) => {
-        if (error) throw error;
-        if (!map.hasImage('tower-icon')) map.addImage('tower-icon', image, { pixelRatio: 2 });
+      const towerImage = new Image(96, 96);
+      towerImage.onload = () => {
+        if (!map.hasImage('tower-icon')) {
+          map.addImage('tower-icon', towerImage, { pixelRatio: 2 });
+        }
 
         map.addSource('stations', {
           type: 'geojson',
@@ -480,7 +482,13 @@
 
         resizeCanvas();
         drawCoverage();
-      });
+      };
+
+      towerImage.onerror = () => {
+        console.error('Tower icon failed to load.');
+      };
+
+      towerImage.src = makeTowerIcon();
     });
 
     map.on('move', drawCoverage);
