@@ -348,42 +348,16 @@
 
     const map = new mapboxgl.Map({
       container: 'map',
-      style: 'mapbox://styles/mapbox/standard',
+      style: 'mapbox://styles/mapbox/navigation-night-v1',
       center: [-149.4937, 64.2008],
       zoom: 3.2,
       pitch: 0,
       attributionControl: false
     });
 
-map.on('style.load', () => {
-  map.setConfigProperty('basemap', 'lightPreset', 'dusk');
-});
-
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-    function makeTowerIcon() {
-      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none">
-          <defs>
-            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="1.6" result="blur"/>
-              <feMerge>
-                <feMergeNode in="blur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
-          <g filter="url(#glow)">
-            <path d="M48 10c2.2 0 4 1.8 4 4v5.4c10.2 1.7 18.3 9.8 20 20H66c-1.5-7-7-12.5-14-14v-6.4c0-2.2-1.8-4-4-4s-4 1.8-4 4v6.4c-7 1.5-12.5 7-14 14h-6c1.7-10.2 9.8-18.3 20-20V14c0-2.2 1.8-4 4-4Z" fill="#111111" opacity="0.96"/>
-            <path d="M34 84h28l-9-22h8L50.8 36h6.2l-9-18-9 18H45L35 62h8l-9 22Zm11.2-8 2.8-7h0l2.8 7h-5.6Z" fill="#111111"/>
-            <path d="M16 46c0-15.2 7.8-26.5 18-31.7" stroke="#111111" stroke-width="4" stroke-linecap="round" opacity="0.74"/>
-            <path d="M80 46c0-15.2-7.8-26.5-18-31.7" stroke="#111111" stroke-width="4" stroke-linecap="round" opacity="0.74"/>
-            <path d="M24 50c0-10.4 5.4-18.4 12.6-22.5" stroke="#111111" stroke-width="3.5" stroke-linecap="round" opacity="0.48"/>
-            <path d="M72 50c0-10.4-5.4-18.4-12.6-22.5" stroke="#111111" stroke-width="3.5" stroke-linecap="round" opacity="0.48"/>
-          </g>
-        </svg>
-      `);
-    }
+    const STATION_ICON_PATH = './tower-icon.png';
 
     map.on('load', () => {
       map.fitBounds(bounds, { padding: 70, duration: 0, maxZoom: 5.4 });
@@ -398,8 +372,8 @@ map.on('style.load', () => {
         type: 'fill',
         source: 'coverage-20-30',
         paint: {
-          'fill-color': '#cf6d45',
-          'fill-opacity': 0.30
+          'fill-color': '#e16b3f',
+          'fill-opacity': 0.42
         }
       });
 
@@ -408,10 +382,10 @@ map.on('style.load', () => {
         type: 'line',
         source: 'coverage-20-30',
         paint: {
-          'line-color': '#d67449',
-          'line-width': 18,
-          'line-opacity': 0.14,
-          'line-blur': 8
+          'line-color': '#ee7a4f',
+          'line-width': 22,
+          'line-opacity': 0.22,
+          'line-blur': 9
         }
       });
 
@@ -420,8 +394,8 @@ map.on('style.load', () => {
         type: 'fill',
         source: 'coverage-10-20',
         paint: {
-          'fill-color': '#d8bf55',
-          'fill-opacity': 0.34
+          'fill-color': '#e4c94f',
+          'fill-opacity': 0.48
         }
       });
 
@@ -430,10 +404,10 @@ map.on('style.load', () => {
         type: 'line',
         source: 'coverage-10-20',
         paint: {
-          'line-color': '#d8bf55',
-          'line-width': 16,
-          'line-opacity': 0.12,
-          'line-blur': 7
+          'line-color': '#f0d45a',
+          'line-width': 20,
+          'line-opacity': 0.20,
+          'line-blur': 8
         }
       });
 
@@ -442,8 +416,8 @@ map.on('style.load', () => {
         type: 'fill',
         source: 'coverage-0-10',
         paint: {
-          'fill-color': '#319a52',
-          'fill-opacity': 0.40
+          'fill-color': '#2fb35b',
+          'fill-opacity': 0.58
         }
       });
 
@@ -452,10 +426,10 @@ map.on('style.load', () => {
         type: 'line',
         source: 'coverage-0-10',
         paint: {
-          'line-color': '#35a55a',
-          'line-width': 14,
-          'line-opacity': 0.14,
-          'line-blur': 6
+          'line-color': '#4ec66f',
+          'line-width': 18,
+          'line-opacity': 0.22,
+          'line-blur': 7
         }
       });
 
@@ -473,9 +447,9 @@ map.on('style.load', () => {
             'icon-image': 'tower-icon',
             'icon-size': [
               'interpolate', ['linear'], ['zoom'],
-              3, 0.30,
-              5, 0.42,
-              7, 0.58
+              3, 0.28,
+              5, 0.38,
+              7, 0.52
             ],
             'icon-allow-overlap': true,
             'icon-ignore-placement': true
@@ -494,14 +468,14 @@ map.on('style.load', () => {
               4, 10,
               7, 12
             ],
-            'text-offset': [0, 1.55],
+            'text-offset': [0, 1.45],
             'text-anchor': 'top',
             'text-allow-overlap': true
           },
           paint: {
-            'text-color': '#eef4ff',
-            'text-halo-color': 'rgba(9,20,35,0.95)',
-            'text-halo-width': 1.2
+            'text-color': '#f4f8ff',
+            'text-halo-color': 'rgba(9,20,35,0.92)',
+            'text-halo-width': 1.4
           }
         });
 
@@ -533,11 +507,12 @@ map.on('style.load', () => {
       };
 
       towerImage.onerror = () => {
-        console.error('Tower icon failed to load');
+        console.error('Station PNG failed to load. Make sure tower-icon.png is in the repo root next to index.html');
       };
 
-      towerImage.src = makeTowerIcon();
+      towerImage.src = STATION_ICON_PATH;
     });
   </script>
 </body>
 </html>
+
