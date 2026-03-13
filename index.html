@@ -348,12 +348,16 @@
 
     const map = new mapboxgl.Map({
       container: 'map',
-      style: 'mapbox://styles/mapbox/navigation-night-v1',
+      style: 'mapbox://styles/mapbox/standard',
       center: [-149.4937, 64.2008],
       zoom: 3.2,
       pitch: 0,
       attributionControl: false
     });
+
+map.on('style.load', () => {
+  map.setConfigProperty('basemap', 'lightPreset', 'dusk');
+});
 
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
