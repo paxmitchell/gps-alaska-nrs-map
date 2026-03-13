@@ -328,87 +328,122 @@
       return (km * 1000) / metersPerPixel;
     }
 
-    function drawCoverage() {
-      if (!map.isStyleLoaded()) return;
+   function drawCoverage() {
+  if (!map.isStyleLoaded()) return;
 
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      ctx.clearRect(0, 0, width, height);
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  ctx.clearRect(0, 0, width, height);
 
-      // Pass 1: low-opacity base fields
-      ctx.globalCompositeOperation = 'source-over';
+  // Pass 1: stronger base layer
+  ctx.globalCompositeOperation = 'source-over';
 
-      stations.forEach(station => {
-        const projected = map.project(station.coordinates);
-        if (projected.x < -320 || projected.x > width + 320 || projected.y < -320 || projected.y > height + 320) {
-          return;
-        }
-
-        const outerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 30);
-        const midRadius = kmToPixels(station.coordinates[1], map.getZoom(), 20);
-        const innerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 10);
-
-        const baseGradient = ctx.createRadialGradient(
-          projected.x,
-          projected.y,
-          0,
-          projected.x,
-          projected.y,
-          outerRadius
-        );
-
-        baseGradient.addColorStop(0.00, 'rgba(42, 150, 70, 0.10)');
-        baseGradient.addColorStop(innerRadius / outerRadius * 0.68, 'rgba(42, 150, 70, 0.10)');
-        baseGradient.addColorStop(innerRadius / outerRadius, 'rgba(94, 176, 74, 0.09)');
-        baseGradient.addColorStop((innerRadius + (midRadius - innerRadius) * 0.60) / outerRadius, 'rgba(208, 188, 68, 0.08)');
-        baseGradient.addColorStop(midRadius / outerRadius, 'rgba(232, 164, 72, 0.07)');
-        baseGradient.addColorStop(0.85, 'rgba(207, 100, 55, 0.05)');
-        baseGradient.addColorStop(1.00, 'rgba(180, 64, 43, 0.00)');
-
-        ctx.beginPath();
-        ctx.arc(projected.x, projected.y, outerRadius, 0, Math.PI * 2);
-        ctx.fillStyle = baseGradient;
-        ctx.fill();
-      });
-
-      // Pass 2: additive blend to merge tight clusters into one blob
-      ctx.globalCompositeOperation = 'lighter';
-
-      stations.forEach(station => {
-        const projected = map.project(station.coordinates);
-        if (projected.x < -320 || projected.x > width + 320 || projected.y < -320 || projected.y > height + 320) {
-          return;
-        }
-
-        const outerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 30);
-        const midRadius = kmToPixels(station.coordinates[1], map.getZoom(), 20);
-        const innerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 10);
-
-        const blendGradient = ctx.createRadialGradient(
-          projected.x,
-          projected.y,
-          0,
-          projected.x,
-          projected.y,
-          outerRadius
-        );
-
-        blendGradient.addColorStop(0.00, 'rgba(42, 150, 70, 0.08)');
-        blendGradient.addColorStop(innerRadius / outerRadius * 0.72, 'rgba(42, 150, 70, 0.08)');
-        blendGradient.addColorStop(innerRadius / outerRadius, 'rgba(94, 176, 74, 0.065)');
-        blendGradient.addColorStop((innerRadius + (midRadius - innerRadius) * 0.55) / outerRadius, 'rgba(214, 190, 71, 0.05)');
-        blendGradient.addColorStop(midRadius / outerRadius, 'rgba(234, 165, 74, 0.04)');
-        blendGradient.addColorStop(0.85, 'rgba(207, 100, 55, 0.03)');
-        blendGradient.addColorStop(1.00, 'rgba(180, 64, 43, 0.00)');
-
-        ctx.beginPath();
-        ctx.arc(projected.x, projected.y, outerRadius, 0, Math.PI * 2);
-        ctx.fillStyle = blendGradient;
-        ctx.fill();
-      });
-
-      ctx.globalCompositeOperation = 'source-over';
+  stations.forEach(station => {
+    const projected = map.project(station.coordinates);
+    if (projected.x < -340 || projected.x > width + 340 || projected.y < -340 || projected.y > height + 340) {
+      return;
     }
+
+    const outerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 30);
+    const midRadius = kmToPixels(station.coordinates[1], map.getZoom(), 20);
+    const innerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 10);
+
+    const baseGradient = ctx.createRadialGradient(
+      projected.x,
+      projected.y,
+      0,
+      projected.x,
+      projected.y,
+      outerRadius
+    );
+
+    baseGradient.addColorStop(0.00, 'rgba(38, 155, 72, 0.28)');
+    baseGradient.addColorStop(innerRadius / outerRadius * 0.78, 'rgba(38, 155, 72, 0.28)');
+    baseGradient.addColorStop(innerRadius / outerRadius, 'rgba(88, 178, 70, 0.20)');
+    baseGradient.addColorStop((innerRadius + (midRadius - innerRadius) * 0.58) / outerRadius, 'rgba(212, 194, 68, 0.17)');
+    baseGradient.addColorStop(midRadius / outerRadius, 'rgba(236, 166, 70, 0.15)');
+    baseGradient.addColorStop(0.84, 'rgba(214, 103, 56, 0.11)');
+    baseGradient.addColorStop(1.00, 'rgba(180, 64, 43, 0.00)');
+
+    ctx.beginPath();
+    ctx.arc(projected.x, projected.y, outerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = baseGradient;
+    ctx.fill();
+  });
+
+  // Pass 2: heavier additive blend so nearby stations merge
+  ctx.globalCompositeOperation = 'lighter';
+
+  stations.forEach(station => {
+    const projected = map.project(station.coordinates);
+    if (projected.x < -340 || projected.x > width + 340 || projected.y < -340 || projected.y > height + 340) {
+      return;
+    }
+
+    const outerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 30);
+    const midRadius = kmToPixels(station.coordinates[1], map.getZoom(), 20);
+    const innerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 10);
+
+    const blendGradient = ctx.createRadialGradient(
+      projected.x,
+      projected.y,
+      0,
+      projected.x,
+      projected.y,
+      outerRadius
+    );
+
+    blendGradient.addColorStop(0.00, 'rgba(38, 155, 72, 0.24)');
+    blendGradient.addColorStop(innerRadius / outerRadius * 0.82, 'rgba(38, 155, 72, 0.24)');
+    blendGradient.addColorStop(innerRadius / outerRadius, 'rgba(88, 178, 70, 0.15)');
+    blendGradient.addColorStop((innerRadius + (midRadius - innerRadius) * 0.62) / outerRadius, 'rgba(212, 194, 68, 0.11)');
+    blendGradient.addColorStop(midRadius / outerRadius, 'rgba(236, 166, 70, 0.09)');
+    blendGradient.addColorStop(0.84, 'rgba(214, 103, 56, 0.06)');
+    blendGradient.addColorStop(1.00, 'rgba(180, 64, 43, 0.00)');
+
+    ctx.beginPath();
+    ctx.arc(projected.x, projected.y, outerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = blendGradient;
+    ctx.fill();
+  });
+
+  // Pass 3: blur the field slightly so clusters read as one mass
+  ctx.globalCompositeOperation = 'screen';
+  ctx.filter = 'blur(20px)';
+
+  stations.forEach(station => {
+    const projected = map.project(station.coordinates);
+    if (projected.x < -340 || projected.x > width + 340 || projected.y < -340 || projected.y > height + 340) {
+      return;
+    }
+
+    const outerRadius = kmToPixels(station.coordinates[1], map.getZoom(), 30);
+    const softRadius = outerRadius * 0.94;
+
+    const softGradient = ctx.createRadialGradient(
+      projected.x,
+      projected.y,
+      0,
+      projected.x,
+      projected.y,
+      softRadius
+    );
+
+    softGradient.addColorStop(0.00, 'rgba(56, 170, 86, 0.10)');
+    softGradient.addColorStop(0.45, 'rgba(120, 186, 78, 0.08)');
+    softGradient.addColorStop(0.72, 'rgba(220, 184, 78, 0.06)');
+    softGradient.addColorStop(0.90, 'rgba(220, 120, 62, 0.03)');
+    softGradient.addColorStop(1.00, 'rgba(180, 64, 43, 0.00)');
+
+    ctx.beginPath();
+    ctx.arc(projected.x, projected.y, softRadius, 0, Math.PI * 2);
+    ctx.fillStyle = softGradient;
+    ctx.fill();
+  });
+
+  ctx.filter = 'none';
+  ctx.globalCompositeOperation = 'source-over';
+}
 
     function makeTowerIcon() {
       return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`
