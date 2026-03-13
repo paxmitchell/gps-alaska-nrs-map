@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GPS Alaska | NRS Coverage Map</title>
+  <title>GPS Alaska | TopNet Live Coverage Map</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet" />
   <style>
     :root {
@@ -73,6 +73,60 @@
       width: 24px;
       height: 24px;
       fill: var(--brand);
+    }
+
+    .legend-dropdown {
+      margin-top: 10px;
+    }
+
+    .legend-dropdown summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      font-weight: 650;
+      font-size: 14px;
+      color: var(--text);
+      user-select: none;
+    }
+
+    .legend-dropdown summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .legend-chevron {
+      display: inline-block;
+      transition: transform 180ms ease;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .legend-dropdown[open] .legend-chevron {
+      transform: rotate(180deg);
+    }
+
+    .legend-content {
+      margin-top: 10px;
+      font-size: 13px;
+      color: rgba(238,244,255,0.82);
+      display: grid;
+      gap: 8px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .legend-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      flex: 0 0 auto;
     }
 
     .eyebrow {
@@ -204,6 +258,17 @@
   <div id="map"></div>
 
   <div class="panel title-card">
+    <details class="legend-dropdown" open>
+      <summary>
+        <span>Coverage Bands</span>
+        <span class="legend-chevron">⌄</span>
+      </summary>
+      <div class="legend-content">
+        <div class="legend-row"><span class="legend-dot" style="background:#2fb35b;"></span>± less than 0.1 inch</div>
+        <div class="legend-row"><span class="legend-dot" style="background:#e4c94f;"></span>± 0.1–0.2 inch</div>
+        <div class="legend-row"><span class="legend-dot" style="background:#e16b3f;"></span>± 0.3+ inch</div>
+      </div>
+    </details>
     <div class="brand-row">
       <div class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 24 24">
@@ -215,20 +280,12 @@
         <h1>NRS Coverage Map</h1>
       </div>
     </div>
-    <div class="subtitle">
-      True merged Turf.js coverage polygons with 10 km, 20 km, and 30 km distance bands.
-    </div>
+    
   </div>
 
-  <div class="panel legend">
-    <h2>Coverage Bands</h2>
-    <div class="legend-item"><span class="swatch pin"></span><span>Network reference station pin</span></div>
-    <div class="legend-item"><span class="swatch green"></span><span>0–10 km core coverage</span></div>
-    <div class="legend-item"><span class="swatch yellow"></span><span>10–20 km transitional coverage</span></div>
-    <div class="legend-item"><span class="swatch orange"></span><span>20–30 km outer coverage fade</span></div>
-  </div>
+  
 
-  <div class="footer-chip">Mapbox + Turf.js merged polygons • optimized for GitHub + Netlify</div>
+  
 
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
@@ -451,9 +508,12 @@ map.on('style.load', () => {
             'icon-image': 'tower-icon',
             'icon-size': [
               'interpolate', ['linear'], ['zoom'],
-              3, 0.28,
-              5, 0.38,
-              7, 0.52
+              3, 0.34,
+              5, 0.48,
+              7, 0.72,
+              9, 0.96,
+              11, 1.24,
+              13, 1.6
             ],
             'icon-allow-overlap': true,
             'icon-ignore-placement': true
@@ -470,9 +530,11 @@ map.on('style.load', () => {
             'text-size': [
               'interpolate', ['linear'], ['zoom'],
               4, 10,
-              7, 12
+              7, 12,
+              10, 14,
+              13, 16
             ],
-            'text-offset': [0, 1.45],
+            'text-offset': [0, 1.6],
             'text-anchor': 'top',
             'text-allow-overlap': true
           },
