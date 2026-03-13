@@ -258,30 +258,44 @@
   <div id="map"></div>
 
   <div class="panel title-card">
-    <details class="legend-dropdown" open>
-      <summary>
-        <span>Coverage Bands</span>
-        <span class="legend-chevron">⌄</span>
-      </summary>
-      <div class="legend-content">
-        <div class="legend-row"><span class="legend-dot" style="background:#2fb35b;"></span>± less than 0.1 inch</div>
-        <div class="legend-row"><span class="legend-dot" style="background:#e4c94f;"></span>± 0.1–0.2 inch</div>
-        <div class="legend-row"><span class="legend-dot" style="background:#e16b3f;"></span>± 0.3+ inch</div>
+
+  <div class="brand-row">
+    <div class="brand-mark">
+      <img src="tower-icon.png" style="width:26px;height:26px;">
+    </div>
+
+    <div>
+      <div class="eyebrow">TOPCON</div>
+      <h1>TopNet Live Coverage Map</h1>
+    </div>
+  </div>
+
+  <details class="legend-dropdown">
+    <summary>
+      <span>Coverage Bands</span>
+      <span class="legend-chevron">⌄</span>
+    </summary>
+
+    <div class="legend-content">
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#2fb35b;"></span>
+        ± less than 0.1 inch
       </div>
-    </details>
-    <div class="brand-row">
-      <div class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 2a1 1 0 0 1 1 1v1.06a8.002 8.002 0 0 1 6.94 6.94H21a1 1 0 1 1 0 2h-1.06a8.002 8.002 0 0 1-6.94 6.94V21a1 1 0 1 1-2 0v-1.06a8.002 8.002 0 0 1-6.94-6.94H3a1 1 0 1 1 0-2h1.06A8.002 8.002 0 0 1 11 4.06V3a1 1 0 0 1 1-1Zm0 4a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm0 3a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/>
-        </svg>
+
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#e4c94f;"></span>
+        ± 0.1–0.2 inch
       </div>
-      <div>
-        <div class="eyebrow">GPS Alaska</div>
-        <h1>NRS Coverage Map</h1>
+
+      <div class="legend-row">
+        <span class="legend-dot" style="background:#e16b3f;"></span>
+        ± 0.3+ inch
       </div>
     </div>
-    
-  </div>
+
+  </details>
+
+</div>
 
   
 
@@ -507,14 +521,14 @@ map.on('style.load', () => {
           layout: {
             'icon-image': 'tower-icon',
             'icon-size': [
-              'interpolate', ['linear'], ['zoom'],
-              3, 0.34,
-              5, 0.48,
-              7, 0.72,
-              9, 0.96,
-              11, 1.24,
-              13, 1.6
-            ],
+  'interpolate', ['linear'], ['zoom'],
+  3, 0.45,
+  5, 0.70,
+  7, 1.05,
+  9, 1.55,
+  11, 2.1,
+  13, 2.8,
+  15, 3.6,
             'icon-allow-overlap': true,
             'icon-ignore-placement': true
           }
